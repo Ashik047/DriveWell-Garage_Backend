@@ -40,8 +40,7 @@ const userSchema = new mongoose.Schema({
     },
     branch: {
         type: String,
-    },
-    vehicles: [mongoose.Schema.Types.ObjectId]
+    }
 });
 
 const User = mongoose.model("User", userSchema);

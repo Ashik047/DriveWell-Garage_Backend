@@ -3,8 +3,13 @@ const Joi = require("joi");
 const { cloudinary } = require("../middlewares/multerMiddleware");
 
 exports.getAllServicesController = async (req, res) => {
+    const { type } = req.query;
+    const filter = {};
+    if (type) {
+        filter[type] = 1;
+    }
     try {
-        const allServices = await Service.find({});
+        const allServices = await Service.find({}, filter);
         return res.status(200).json(allServices);
     } catch (err) {
         return res.status(500).json({ "Message": "Something went wrong." });
@@ -23,7 +28,7 @@ exports.addServiceController = async (req, res) => {
         return res.status(400).json({ "Message": errMessage });
     }
     if (!req.file) {
-        return res.status(400).json({ "Message": "Branch Photo is required." });
+        return res.status(400).json({ "Message": "Service Photo is required." });
     }
     const { serviceName, description, price } = req.body;
     const { path, filename } = req.file;
@@ -81,7 +86,7 @@ exports.deleteServiceController = async (req, res) => {
     try {
         const result = await Service.findByIdAndDelete(id);
         await cloudinary.uploader.destroy(result.image.filename);
-        return res.status(200).json({ "Message": `Branch ${result.serviceName} deleted successfully.` });
+        return res.status(200).json({ "Message": `Service ${result.serviceName} deleted successfully.` });
     } catch (err) {
         return res.status(500).json({ "Message": "Something went wrong." });
     }

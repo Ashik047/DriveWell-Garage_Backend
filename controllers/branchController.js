@@ -92,7 +92,14 @@ exports.editBranchController = async (req, res) => {
 exports.deleteBranchController = async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await Branch.findByIdAndDelete(id);
+        const foundBranch = await Branch.findById(id).exec();
+        if (!foundBranch) {
+            return res.status(404).json({ "Message": "Branch not found." });
+        }
+        if (foundBranch.staffs?.length > 0) {
+            return res.status(409).json({ "Message": "Cannot delete — this branch has active staff assigned." });
+        }
+        await foundBranch.deleteOne();
         await cloudinary.uploader.destroy(result.image.filename);
         return res.status(200).json({ "Message": `Branch ${result.branchName} deleted successfully.` });
     } catch (err) {

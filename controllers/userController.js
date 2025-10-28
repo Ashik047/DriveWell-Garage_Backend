@@ -22,7 +22,7 @@ module.exports.registerController = async (req, res) => {
         return res.status(400).json({ "Message": errMessage });
     }
     const { fullName, email, phone, password, confirmPassword } = req.body;
-    const emailRegex = /^[\w]+@[\w]+\.com+/g;
+    const emailRegex = /^[\w]+@[\w]+\.com/g;
     if (!emailRegex.test(email)) {
         return res.status(400).json({ "Message": "Invalid Email." });
     }
@@ -100,6 +100,26 @@ module.exports.loginController = async (req, res) => {
 
 };
 
+module.exports.userLogoutController = async (req, res) => {
+    const cookies = req.cookies;
+    if (!cookies?.wisp) return res.status(200).json({ "Message": "You have successfully logged out." });
+    const refreshToken = cookies.wisp;
+    const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
+    try {
+        const foundUser = await User.findOne({ refreshToken: hashedToken }).exec();
+        if (!foundUser) {
+            res.clearCookie('wisp', { httpOnly: true, /* secure: true, sameSite: 'None', */ maxAge: 24 * 60 * 60 * 1000 });
+            return res.status(200).json({ "Message": "You have successfully logged out." });
+        }
+        foundUser.refreshToken = '';
+        await foundUser.save();
+        res.clearCookie('wisp', { httpOnly: true, /* secure: true, sameSite: 'None', */ maxAge: 24 * 60 * 60 * 1000 });
+        res.status(200).json({ "Message": "You have successfully logged out." });
+    } catch (err) {
+        return res.status(500).json({ "Message": "Something went wrong. You were not logged out." });
+    }
+};
+
 module.exports.refreshTokenController = async (req, res) => {
     const cookies = req.cookies;
     if (!cookies.wisp) {
@@ -121,6 +141,7 @@ module.exports.refreshTokenController = async (req, res) => {
                     {
                         "UserInfo": {
                             "userId": foundUser._id,
+                            "userName": foundUser.fullName,
                             "email": foundUser.email,
                             "role": foundUser.role
                         }
@@ -128,7 +149,7 @@ module.exports.refreshTokenController = async (req, res) => {
                     process.env.ACCESS_TOKEN_SECRET,
                     { expiresIn: '15m' }
                 );
-                console.log(accessToken);
+                // console.log(accessToken);
 
                 return res.status(200).json({ "Message": "New Access Token Created", "role": foundUser.role, accessToken });
             }
@@ -147,6 +168,16 @@ module.exports.getUserDetailsController = async (req, res) => {
     const { userId } = req.payload;
     try {
         const result = await User.findById(userId, { password: 0, __v: 0, refreshToken: 0, branch: 0, status: 0 }).exec();
+        return res.status(200).json(result);
+    } catch (err) {
+        return res.status(500).json({ "Message": "Something went wrong." });
+    }
+};
+
+module.exports.getProfilePicController = async (req, res) => {
+    const { userId } = req.payload;
+    try {
+        const result = await User.findById(userId, { image: 1 }).exec();
         return res.status(200).json(result);
     } catch (err) {
         return res.status(500).json({ "Message": "Something went wrong." });
