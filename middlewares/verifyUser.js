@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const Branch = require("../models/branchModel");
 
 const verifyUser = (req, res, next) => {
 
@@ -18,7 +19,8 @@ const verifyUser = (req, res, next) => {
                 userId: decoded.UserInfo.userId,
                 userName: decoded.UserInfo.userName,
                 email: decoded.UserInfo.email,
-                role: decoded.UserInfo.role
+                role: decoded.UserInfo.role,
+                branch: decoded.UserInfo.branch
             }
             next();
         }

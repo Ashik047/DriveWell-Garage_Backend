@@ -17,11 +17,16 @@ const serviceRouter = require("./routes/serviceRoute");
 const staffRouter = require("./routes/staffRoute");
 const feedbackRouter = require("./routes/feedbackRoute");
 const vehicleRouter = require("./routes/vehicleRoute");
+const bookingRouter = require("./routes/bookingRoute");
+const paymentRouter = require("./routes/paymentRoute");
 
 app.use(cors(corsConfig));
-app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
+
+app.use("/payment", paymentRouter);
+
+app.use(express.json());
 
 app.use(authRouter);
 app.use("/branch", branchRouter);
@@ -30,6 +35,7 @@ app.use("/service", serviceRouter);
 app.use("/staff", staffRouter);
 app.use("/feedback", feedbackRouter);
 app.use("/vehicle", vehicleRouter);
+app.use("/booking", bookingRouter);
 
 app.all(/(.*)/, (req, res) => {
     return res.status(404).json({ "Message": "Page not found." });

@@ -38,6 +38,9 @@ const userSchema = new mongoose.Schema({
             default: "DriveWell Garage/cuxfxm9t0xxtklgv82t9"
         }
     },
+    service: {
+        type: String,
+    },
     branch: {
         type: String,
     }

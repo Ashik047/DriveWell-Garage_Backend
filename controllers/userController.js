@@ -143,7 +143,8 @@ module.exports.refreshTokenController = async (req, res) => {
                             "userId": foundUser._id,
                             "userName": foundUser.fullName,
                             "email": foundUser.email,
-                            "role": foundUser.role
+                            "role": foundUser.role,
+                            "branch": foundUser.branch
                         }
                     },
                     process.env.ACCESS_TOKEN_SECRET,
