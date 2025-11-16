@@ -46,7 +46,6 @@ const bookingSchema = new mongoose.Schema({
     },
     notes: [
         {
-            _id: false,
             staffName: {
                 type: String,
                 required: true

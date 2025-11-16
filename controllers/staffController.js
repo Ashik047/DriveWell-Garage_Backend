@@ -3,6 +3,7 @@ const Branch = require("../models/branchModel");
 const Joi = require("joi");
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
+const transporter = require("../config/nodeMailer");
 
 
 exports.getAllStaffsController = async (req, res) => {
@@ -38,13 +39,36 @@ exports.addStaffController = async (req, res) => {
         if (foundStaff) {
             return res.status(409).json({ "Message": "Staff already exist." });
         }
-        const password = "password";
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$!";
+        let password = "";
+        for (let i = 0; i < 8; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
         const hashedPassword = await bcrypt.hash(password, 10);
         const session = await mongoose.startSession();
         await session.withTransaction(async () => {
             const newStaff = new User({ fullName, email, phone, role, branch, password: hashedPassword });
             await newStaff.save({ session });
             await Branch.findOneAndUpdate({ branchName: branch }, { $push: { staffs: newStaff._id } }, { session });
+            const mailOptions = {
+                from: process.env.MAIL_USER,
+                to: email,
+                subject: "Welcome to DriveWell Garage!",
+                html: `
+                <h2>Welcome, ${fullName}!</h2>
+                <p>Your staff account has been created successfully.</p>
+                <p><b>Login Email:</b> ${email}</p>
+                <p><b>Temporary Password:</b> ${password}</p>
+                <p>Please log in and change your password immediately.</p>
+                <br/>
+                <p>Regards,<br/>DriveWell Garage Team</p>
+            `
+            };
+            try {
+                await transporter.sendMail(mailOptions);
+            } catch (err) {
+                return res.status(500).json({ "Message": "Failed to sent mail to the staff. New staff creating failed." })
+            }
         });
         return res.status(200).json({ "Message": `New Staff added successfully.` });
     } catch (err) {

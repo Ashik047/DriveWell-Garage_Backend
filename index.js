@@ -19,6 +19,7 @@ const feedbackRouter = require("./routes/feedbackRoute");
 const vehicleRouter = require("./routes/vehicleRoute");
 const bookingRouter = require("./routes/bookingRoute");
 const paymentRouter = require("./routes/paymentRoute");
+const dataRouter = require("./routes/dataRoutes");
 
 app.use(cors(corsConfig));
 app.use(cookieParser());
@@ -36,9 +37,10 @@ app.use("/staff", staffRouter);
 app.use("/feedback", feedbackRouter);
 app.use("/vehicle", vehicleRouter);
 app.use("/booking", bookingRouter);
+app.use("/data", dataRouter);
 
 app.all(/(.*)/, (req, res) => {
-    return res.status(404).json({ "Message": "Page not found." });
+    return res.status(404).json({ "Message": "Not found." });
 })
 
 app.use(errorHandler);

@@ -3,16 +3,20 @@ const Branch = require("../models/branchModel");
 const Service = require("../models/serviceModel");
 const Vehicle = require("../models/vehicleModel");
 const Joi = require("joi");
+const { format } = require("date-fns");
 
 
 exports.getBookingController = async (req, res) => {
     const { role, userId, branch } = req.payload;
     try {
         let result;
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 1);
+        startDate.setDate(1);
         if (role === "Customer") {
-            result = await Booking.find({ customer: userId }).exec();
+            result = await Booking.find({ customer: userId, date: { $lte: startDate } }).exec();
         } else if (role === "Staff" || role === "Manager") {
-            result = await Booking.find({ "branch.branchName": branch }).exec();
+            result = await Booking.find({ "branch.branchName": branch, date: { $lte: startDate } }).exec();
         }
         res.status(200).json(result);
 
@@ -40,7 +44,7 @@ exports.addBookingController = async (req, res) => {
         const errMessage = error.details.map(event => event.message).join(",");
         return res.status(400).json({ "Message": errMessage });
     }
-
+    const { userName, email } = req.payload;
     const { vehicle, service, branch, date, description } = req.body;
     if (new Date(date) < new Date()) {
         return res.status(400).json({ message: "Cannot book for a past date." });
@@ -97,6 +101,8 @@ exports.addBookingController = async (req, res) => {
                 service,
                 date,
                 customer: userId.toString(),
+                customerName: userName,
+                customerEmail: email,
                 description
             },
             success_url: "http://localhost:5173/payment-success",
@@ -166,6 +172,47 @@ exports.editBookingStatusController = async (req, res) => {
     try {
         await Booking.findByIdAndUpdate(id, { status });
         return res.status(200).json({ "Message": "Booking status updated successfully." });
+
+    } catch (err) {
+        return res.status(500).json({ "Message": "Something went wrong." });
+    }
+};
+
+exports.addBookingNotesController = async (req, res) => {
+    const { id } = req.params;
+    const reqBodySchema = Joi.object({
+        note: Joi.string().required()
+    }).required();
+    const { error } = reqBodySchema.validate(req.body);
+    if (error) {
+        const errMessage = error.details.map(event => event.message).join(",");
+        return res.status(400).json({ "Message": errMessage });
+    }
+    const { note } = req.body;
+    const { userName } = req.payload;
+    const date = new Date();
+    const formattedDate = format(date, 'dd MMM yyyy');
+    try {
+        await Booking.findByIdAndUpdate(id, {
+            $push: {
+                notes: {
+                    staffName: userName,
+                    note,
+                    date: formattedDate
+                }
+            }
+        });
+        return res.status(200).json({ "Message": "Note added successfully." });
+    } catch (err) {
+        return res.status(500).json({ "Message": "Something went wrong." });
+    }
+};
+
+exports.deleteBookingNoteController = async (req, res) => {
+    const { id, noteId } = req.params;
+    try {
+        await Booking.findByIdAndUpdate(id, { $pull: { notes: { _id: noteId } } });
+        return res.status(200).json({ "Message": "Note deleted successfully." });
 
     } catch (err) {
         return res.status(500).json({ "Message": "Something went wrong." });

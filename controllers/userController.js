@@ -5,6 +5,8 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { cloudinary } = require("../middlewares/multerMiddleware");
+const transporter = require("../config/nodeMailer");
+const mongoose = require("mongoose");
 
 /* auth controllers */
 
@@ -40,6 +42,32 @@ module.exports.registerController = async (req, res) => {
             fullName, email: properEmail, phone, password: hashPassword, role: "Customer"
         });
         await newUser.save();
+        const mailOptions = {
+            from: process.env.MAIL_USER,
+            to: properEmail,
+            subject: "Welcome to DriveWell Garage!",
+            html: `
+                    <h2>Welcome to DriveWell Garage, ${fullName}!</h2>
+                    <p>Thank you for creating your account with us. Your customer profile has been set up successfully, and you can now use our platform to:</p>
+
+                    <ul>
+                        <li>Book service appointments</li>
+                        <li>Track your vehicle status</li>
+                        <li>View service history</li>
+                        <li>Receive updates & notifications</li>
+                    </ul>
+
+                    <p><b>Registered Email:</b> ${email}</p>
+
+                    <p>If you did not create this account, please contact our support team immediately.</p>
+
+                    <br/>
+
+                    <p>We&apos;re excited to serve you!<br/>
+                    <b>DriveWell Garage Team</b></p>
+                `
+        };
+        await transporter.sendMail(mailOptions);
         return res.status(200).json({ "Message": "Account created successfully." });
 
     } catch (err) {
@@ -250,6 +278,83 @@ module.exports.editUserPasswordController = async (req, res) => {
         return res.status(200).json({ "Message": "Password updated successfully." });
 
     } catch (err) {
-        return res.status(500).json("Something went wrong.");
+        return res.status(500).json({ "Message": "Something went wrong." });
+    }
+}
+
+exports.forgotPasswordController = async (req, res) => {
+    const reqBodySchema = Joi.object({
+        email: Joi.string().required(),
+    }).required();
+    const { error } = reqBodySchema.validate(req.body);
+    if (error) {
+        const errMessage = error.details.map(err => err.message).join(",");
+        return res.status(400).json({ "Message": errMessage });
+    }
+
+    const { email } = req.body;
+    try {
+        const foundUser = await User.findOne({ email });
+        if (!foundUser) {
+            return res.status(401).json({ "Message": "Invalid Email." });
+        }
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$!";
+        let password = "";
+        for (let i = 0; i < 8; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const session = await mongoose.startSession();
+        await session.withTransaction(async () => {
+            foundUser.password = hashedPassword;
+            await foundUser.save({ session });
+            const mailOptions = {
+                from: process.env.MAIL_USER,
+                to: email,
+                subject: "Reset Password",
+                html: `
+                        <h2>Password Reset Successful</h2>
+
+                        <p>Hello,</p>
+
+                        <p>Your password for your <b>DriveWell Garage</b> account has been reset successfully.</p>
+
+                        <p>Here is your new temporary password:</p>
+
+                        <p style="
+                            padding: 10px 15px;
+                            background: #f4f4f4;
+                            border-radius: 6px;
+                            display: inline-block;
+                            font-size: 18px;
+                            font-weight: bold;
+                        ">
+                            ${password}
+                        </p>
+
+                        <br/>
+
+                        <p>Please use this password to log in to your account.  
+                        For your security, we strongly recommend changing your password immediately after logging in.</p>
+
+                        <br/>
+
+                        <p>If you did not request a password reset, please contact our support team right away.</p>
+
+                        <br/>
+
+                        <p>Regards,<br/>
+                        <b>DriveWell Garage Team</b></p>
+            `
+            };
+            try {
+                await transporter.sendMail(mailOptions);
+            } catch (err) {
+                return res.status(500).json({ "Message": "Failed to reset password. Try again after sometime." })
+            }
+        });
+        return res.status(200).json({ "Message": `Temporary password has been sent to your email.` });
+    } catch (err) {
+        return res.status(500).json({ "Message": "Something went wrong." });
     }
 }
