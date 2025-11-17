@@ -59,7 +59,29 @@ const bookingSchema = new mongoose.Schema({
                 required: true
             }
         }
-    ]
+    ],
+    bill: {
+        type: [
+            {
+                _id: false,
+                id: { type: String },
+                repairName: { type: String },
+                repairCost: { type: Number }
+            }
+        ],
+        default: []
+    },
+    billPayment: {
+        type: Boolean,
+        default: false
+    },
+    paymentDate: {
+        type: String
+    },
+    paymentMethod: {
+        type: String,
+        enum: ["Cash", "Stripe"]
+    }
 });
 
 const Booking = mongoose.model("Booking", bookingSchema);

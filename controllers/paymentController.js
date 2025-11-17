@@ -21,26 +21,27 @@ exports.webhookController = async (req, res) => {
         const newDate = new Date(metadata.date);
 
         try {
-            const newBooking = new Booking({
-                vehicle: {
-                    vehicleId: metadata.vehicleId,
-                    vehicleName: metadata.vehicleName,
-                },
-                customer: metadata.customer,
-                service: metadata.service,
-                branch: {
-                    branchId: metadata.branchId,
-                    branchName: metadata.branchName,
-                },
-                date: newDate,
-                description: metadata.description
-            });
-            await newBooking.save();
-            const mailOptions = {
-                from: process.env.MAIL_USER,
-                to: metadata.customerEmail,
-                subject: "Service Booking is Confirmed",
-                html: `
+            if (metadata.type === "advance") {
+                const newBooking = new Booking({
+                    vehicle: {
+                        vehicleId: metadata.vehicleId,
+                        vehicleName: metadata.vehicleName,
+                    },
+                    customer: metadata.customer,
+                    service: metadata.service,
+                    branch: {
+                        branchId: metadata.branchId,
+                        branchName: metadata.branchName,
+                    },
+                    date: newDate,
+                    description: metadata.description
+                });
+                await newBooking.save();
+                const mailOptions = {
+                    from: process.env.MAIL_USER,
+                    to: metadata.customerEmail,
+                    subject: "Service Booking is Confirmed",
+                    html: `
                         <h2>Your Service Booking is Confirmed, ${metadata.customerName}!</h2>
 
                         <p>Thank you for choosing <b>DriveWell Garage</b>. Your service request has been successfully booked.</p>
@@ -64,10 +65,46 @@ exports.webhookController = async (req, res) => {
                         <p>Looking forward to serving you!<br/>
                         <b>DriveWell Garage Team</b></p>
                     `
-            };
-            await transporter.sendMail(mailOptions);
-            return res.sendStatus(204);
+                };
+                await transporter.sendMail(mailOptions);
+            } else if (metadata.type === "final") {
+                const currentDate = new Date();
+                await Booking.findByIdAndUpdate(metadata.bookingId, { billPayment: true, paymentDate: currentDate, paymentMethod: "Stripe" });
+                const mailOptions = {
+                    from: process.env.MAIL_USER,
+                    to: metadata.customerEmail,
+                    subject: "Final Payment Is Successfully",
+                    html: `
+                            <h2>Your Final Payment Is Successfully Completed, ${metadata.customerName}!</h2>
 
+                            <p>Thank you for choosing <b>DriveWell Garage</b>. Your service payment has been successfully processed.</p>
+
+                            <h3>📌 Service Summary</h3>
+                            <p><b>Service:</b> ${metadata.service}</p>
+                            <p><b>Vehicle:</b> ${metadata.vehicleName}</p>
+                            <p><b>Service Date:</b> ${format(newDate, 'dd MMM yyyy')}</p>
+                            <p><b>Branch:</b> ${metadata.branchName}</p>
+
+                            <br/>
+
+                            <p><b>Payment:</b> We have received your final payment of <b>$${metadata.finalBill}</b>.</p>
+                            <p>Your previous advance payment of <b>$5</b> has been adjusted in the final bill.</p>
+
+                            <br/>
+                            <p>Your invoice has been generated and is now available for download.</p>
+                            <br/>
+
+                            <p>Thank you for trusting us with your vehicle. We hope you had a smooth service experience.</p>
+
+                            <br/>
+
+                            <p>If you have any questions or feedback, feel free to reach out.<br/>
+                            <b>DriveWell Garage Team</b></p>
+                    `
+                };
+                await transporter.sendMail(mailOptions);
+            }
+            return res.status(200);
         } catch (err) {
             return res.sendStatus(500);
         }

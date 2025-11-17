@@ -4,6 +4,7 @@ const Service = require("../models/serviceModel");
 const Vehicle = require("../models/vehicleModel");
 const Joi = require("joi");
 const { format } = require("date-fns");
+const transporter = require("../config/nodeMailer");
 
 
 exports.getBookingController = async (req, res) => {
@@ -20,6 +21,16 @@ exports.getBookingController = async (req, res) => {
         }
         res.status(200).json(result);
 
+    } catch (err) {
+        return res.status(500).json({ "Message": "Something went wrong." });
+    }
+};
+
+exports.getInvoiceController = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await Booking.findById(id).populate("customer", "fullName email phone").populate("branch.branchId", "location phone").populate("vehicle.vehicleId");
+        res.status(200).json(result);
     } catch (err) {
         return res.status(500).json({ "Message": "Something went wrong." });
     }
@@ -94,6 +105,7 @@ exports.addBookingController = async (req, res) => {
             line_items: line_item,          // details of product that is purchased
             mode: "payment",
             metadata: {
+                type: "advance",
                 vehicleId: vehicle._id.toString(),
                 vehicleName: vehicle.vehicle,
                 branchId: branch._id.toString(),
@@ -159,7 +171,8 @@ exports.getBookingDatesUnavailable = async (req, res) => {
 exports.editBookingStatusController = async (req, res) => {
     const { id } = req.params;
     const reqBodySchema = Joi.object({
-        status: Joi.string().required()
+        status: Joi.string().required(),
+        billDetails: Joi.array().required()
     }).required();
 
     const { error } = reqBodySchema.validate(req.body);
@@ -168,9 +181,54 @@ exports.editBookingStatusController = async (req, res) => {
         return res.status(400).json({ "Message": errMessage });
     }
 
-    const { status } = req.body;
+    const { status, billDetails } = req.body;
+    const { userName, email } = req.payload;
+
+    if (status === "Completed" && billDetails?.length <= 0) {
+        return res.status(400).json({ "Message": "Billing details are missing." });
+    }
+
     try {
-        await Booking.findByIdAndUpdate(id, { status });
+        const result = await Booking.findByIdAndUpdate(id, { status, bill: billDetails }, { new: true }).populate("customer");
+        if (status === "Completed") {
+            const totalBill = result.bill?.map(item => item.repairCost)?.reduce((sum, cost) => sum + cost, 0);
+            const mailOptions = {
+                from: process.env.MAIL_USER,
+                to: result.customer.email,
+                subject: "Service Completed",
+                html: `
+                        <h2>Your Service Is Completed, ${result.customer.fullName}!</h2>
+
+                        <p>Thank you for choosing <b>DriveWell Garage</b>. Your vehicle service has been successfully completed.</p>
+
+                        <h3>📌 Service Summary</h3>
+                        <p><b>Service:</b> ${result.service}</p>
+                        <p><b>Vehicle:</b> ${result.vehicle.vehicleName}</p>
+                        <p><b>Service Date:</b> ${format(result.date, 'dd MMM yyyy')}</p>
+                        <p><b>Branch:</b> ${result.branch.branchName}</p>
+
+                        <br/>
+
+                        <p><b>Payment:</b> Your final bill amount is <b>$${totalBill - 5}</b>.  
+                        Please complete the payment to receive your service invoice.</p>
+
+                        <br/>
+
+                        <p>Once the payment is made, your invoice will be generated and available for download.</p>
+
+                        <br/>
+
+                        <p>Thank you for trusting us with your vehicle. We hope you had a smooth service experience.</p>
+
+                        <br/>
+
+                        <p>If you have any questions or need assistance, feel free to reach out.<br/>
+                        <b>DriveWell Garage Team</b></p>
+
+                    `
+            };
+            await transporter.sendMail(mailOptions);
+        }
         return res.status(200).json({ "Message": "Booking status updated successfully." });
 
     } catch (err) {
@@ -229,4 +287,119 @@ exports.deleteBookingController = async (req, res) => {
     } catch (err) {
         return res.status(500).json({ "Message": "Something went wrong." });
     }
+};
+
+exports.updateBillPaymentStatusController = async (req, res) => {
+    const { id } = req.params;
+    const currentDate = new Date();
+    try {
+        const result = await Booking.findByIdAndUpdate(id, { billPayment: true, paymentDate: currentDate, paymentMethod: "Cash" }, { new: true }).populate("customer");
+        const totalBill = result.bill?.map(item => item.repairCost)?.reduce((sum, cost) => sum + cost, 0);
+        const mailOptions = {
+            from: process.env.MAIL_USER,
+            to: result.customer.email,
+            subject: "Final Payment Successfully",
+            html: `
+                            <h2>Your Final Payment Is Successfully Completed, ${result.customer.fullName}!</h2>
+
+                            <p>Thank you for choosing <b>DriveWell Garage</b>. Your service payment has been successfully processed.</p>
+
+                            <h3>📌 Service Summary</h3>
+                            <p><b>Service:</b> ${result.service}</p>
+                            <p><b>Vehicle:</b> ${result.vehicle.vehicleName}</p>
+                            <p><b>Service Date:</b> ${format(result.date, 'dd MMM yyyy')}</p>
+                            <p><b>Branch:</b> ${result.branch.branchName}</p>
+
+                            <br/>
+
+                            <p><b>Payment:</b> We have received your final payment of <b>$${totalBill - 5}</b>.</p>
+                            <p>Your previous advance payment of <b>$5</b> has been adjusted in the final bill.</p>
+
+                            <br/>
+                            <p>Your invoice has been generated and is now available for download.</p>
+                            <br/>
+
+                            <p>Thank you for trusting us with your vehicle. We hope you had a smooth service experience.</p>
+
+                            <br/>
+
+                            <p>If you have any questions or feedback, feel free to reach out.<br/>
+                            <b>DriveWell Garage Team</b></p>
+                    `
+        };
+        await transporter.sendMail(mailOptions);
+        return res.status(200).json({ "Message": "Billing status updated successfully." });
+
+    } catch (err) {
+        return res.status(500).json({ "Message": "Something went wrong." });
+    }
+};
+
+exports.payBillController = async (req, res) => {
+    const reqBodySchema = Joi.object({
+        bookingDetails: Joi.object().required()
+    }).required();
+
+    const { error } = reqBodySchema.validate(req.body);
+    if (error) {
+        const errMessage = error.details.map(event => event.message).join(",");
+        return res.status(400).json({ "Message": errMessage });
+    }
+    const { id } = req.params;
+    const { userId, userName, email } = req.payload;
+    const { vehicle, service, branch, date, description, bill } = req.body.bookingDetails;
+    // console.log(req.body.bookingDetails);
+
+    const totalBill = bill?.map(item => item.repairCost)?.reduce((sum, cost) => sum + cost, 0);
+
+    try {
+        const foundBooking = await Booking.findById(id);
+        if (!foundBooking) {
+            return res.status(404).json({ "Message": "Booking not found." });
+        }
+        const line_item = [{
+            price_data: {
+                currency: "usd",
+                product_data: {
+                    name: vehicle.vehicleName,
+                    description: `${service}  ${branch.branchName}`
+                },
+                unit_amount: Math.round((totalBill - 5) * 100)
+            },
+            quantity: 1
+        }];
+
+        /* create a stripe checkout */
+        const stripe = require('stripe')(process.env.STRIPEKEY);
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            line_items: line_item,          // details of product that is purchased
+            mode: "payment",
+            metadata: {
+                type: "final",
+                bookingId: id,
+                finalBill: totalBill - 5,
+                vehicleId: vehicle.vehicleId.toString(),
+                vehicleName: vehicle.vehicleName,
+                branchId: branch.branchId.toString(),
+                branchName: branch.branchName,
+                service,
+                date,
+                customer: userId.toString(),
+                customerName: userName,
+                customerEmail: email,
+                description
+            },
+            success_url: "http://localhost:5173/payment-success",
+            cancel_url: "http://localhost:5173/payment-error"       // on payment failure
+        });
+        // await newBooking.save();
+        res.status(200).json({ url: session.url });
+
+    } catch (err) {
+        // console.log(err);
+
+        return res.status(500).json({ "Message": "Something went wrong." });
+    }
+
 };
