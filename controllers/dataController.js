@@ -17,7 +17,7 @@ exports.getDataController = async (req, res) => {
         startDate.setMonth(startDate.getMonth() - 4);
         startDate.setDate(1);
         const bookings = await Booking.find({
-            date: { $lte: startDate }
+            date: { $gte: startDate }
         });
         return res.status(200).json({ noOfVehicles, noOfStaff, noOfServices, noOfCustomers, noOfBranches, noOfBookings, bookings });
 
