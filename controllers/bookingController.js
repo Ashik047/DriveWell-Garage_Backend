@@ -117,8 +117,8 @@ exports.addBookingController = async (req, res) => {
                 customerEmail: email,
                 description
             },
-            success_url: "http://localhost:5173/payment-success",
-            cancel_url: "http://localhost:5173/payment-error"       // on payment failure
+            success_url: "https://drive-well-garage-frontend.vercel.app/payment-success",
+            cancel_url: "https://drive-well-garage-frontend.vercel.app/payment-error"       // on payment failure
         });
         // await newBooking.save();
         res.status(200).json({ url: session.url });
@@ -390,8 +390,8 @@ exports.payBillController = async (req, res) => {
                 customerEmail: email,
                 description
             },
-            success_url: "http://localhost:5173/payment-success",
-            cancel_url: "http://localhost:5173/payment-error"       // on payment failure
+            success_url: "https://drive-well-garage-frontend.vercel.app/payment-success",
+            cancel_url: "https://drive-well-garage-frontend.vercel.app/payment-error"       // on payment failure
         });
         // await newBooking.save();
         res.status(200).json({ url: session.url });

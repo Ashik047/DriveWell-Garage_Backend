@@ -1,4 +1,4 @@
-const allowedOrigins = ["http://localhost:5173"];
+const allowedOrigins = ["https://drive-well-garage-frontend.vercel.app"];
 
 const corsConfig = {
     origin: (origin, callback) => {
