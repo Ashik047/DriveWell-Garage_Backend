@@ -116,7 +116,7 @@ module.exports.loginController = async (req, res) => {
             const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
             foundUser.refreshToken = hashedToken;
             await foundUser.save();
-            res.cookie('wisp', refreshToken, { httpOnly: true, /* secure: true, sameSite: 'None', */ maxAge: 24 * 60 * 60 * 1000 });
+            res.cookie('wisp', refreshToken, { httpOnly: true, secure: true, sameSite: 'None', maxAge: 24 * 60 * 60 * 1000 });
             return res.status(200).json({ "Message": "Login Successful"/* , "role": foundUser.role, accessToken  */ });
 
         } else {
@@ -136,12 +136,12 @@ module.exports.userLogoutController = async (req, res) => {
     try {
         const foundUser = await User.findOne({ refreshToken: hashedToken }).exec();
         if (!foundUser) {
-            res.clearCookie('wisp', { httpOnly: true, /* secure: true, sameSite: 'None', */ maxAge: 24 * 60 * 60 * 1000 });
+            res.clearCookie('wisp', { httpOnly: true, secure: true, sameSite: 'None', maxAge: 24 * 60 * 60 * 1000 });
             return res.status(200).json({ "Message": "You have successfully logged out." });
         }
         foundUser.refreshToken = '';
         await foundUser.save();
-        res.clearCookie('wisp', { httpOnly: true, /* secure: true, sameSite: 'None', */ maxAge: 24 * 60 * 60 * 1000 });
+        res.clearCookie('wisp', { httpOnly: true, secure: true, sameSite: 'None', maxAge: 24 * 60 * 60 * 1000 });
         res.status(200).json({ "Message": "You have successfully logged out." });
     } catch (err) {
         return res.status(500).json({ "Message": "Something went wrong. You were not logged out." });
