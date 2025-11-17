@@ -55,7 +55,8 @@ exports.addStaffController = async (req, res) => {
             await newStaff.save({ session });
             await Branch.findOneAndUpdate({ branchName: branch }, { $push: { staffs: newStaff._id } }, { session });
             const mailOptions = {
-                from: process.env.MAIL_USER,
+                // from: process.env.MAIL_USER,
+                from: "DriveWell Garage <onboarding@resend.dev>",
                 to: email,
                 subject: "Welcome to DriveWell Garage!",
                 html: `

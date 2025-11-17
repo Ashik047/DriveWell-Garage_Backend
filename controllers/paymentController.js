@@ -42,7 +42,8 @@ exports.webhookController = async (req, res) => {
                 });
                 await newBooking.save();
                 const mailOptions = {
-                    from: process.env.MAIL_USER,
+                    // from: process.env.MAIL_USER,
+                    from: "DriveWell Garage <onboarding@resend.dev>",
                     to: metadata.customerEmail,
                     subject: "Service Booking is Confirmed",
                     html: `
@@ -76,7 +77,8 @@ exports.webhookController = async (req, res) => {
                 const currentDate = new Date();
                 await Booking.findByIdAndUpdate(metadata.bookingId, { billPayment: true, paymentDate: currentDate, paymentMethod: "Stripe" });
                 const mailOptions = {
-                    from: process.env.MAIL_USER,
+                    // from: process.env.MAIL_USER,
+                    from: "DriveWell Garage <onboarding@resend.dev>",
                     to: metadata.customerEmail,
                     subject: "Final Payment Is Successfully",
                     html: `

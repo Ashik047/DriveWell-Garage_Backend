@@ -46,7 +46,8 @@ module.exports.registerController = async (req, res) => {
         });
         await newUser.save();
         const mailOptions = {
-            from: process.env.MAIL_USER,
+            // from: process.env.MAIL_USER,
+            from: "DriveWell Garage <onboarding@resend.dev>",
             to: properEmail,
             subject: "Welcome to DriveWell Garage!",
             html: `
@@ -313,7 +314,8 @@ exports.forgotPasswordController = async (req, res) => {
             foundUser.password = hashedPassword;
             await foundUser.save({ session });
             const mailOptions = {
-                from: process.env.MAIL_USER,
+                // from: process.env.MAIL_USER,
+                from: "DriveWell Garage <onboarding@resend.dev>",
                 to: email,
                 subject: "Reset Password",
                 html: `

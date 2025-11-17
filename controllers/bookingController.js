@@ -197,7 +197,8 @@ exports.editBookingStatusController = async (req, res) => {
         if (status === "Completed") {
             const totalBill = result.bill?.map(item => item.repairCost)?.reduce((sum, cost) => sum + cost, 0);
             const mailOptions = {
-                from: process.env.MAIL_USER,
+                // from: process.env.MAIL_USER,
+                from: "DriveWell Garage <onboarding@resend.dev>",
                 to: result.customer.email,
                 subject: "Service Completed",
                 html: `
@@ -301,7 +302,8 @@ exports.updateBillPaymentStatusController = async (req, res) => {
         const result = await Booking.findByIdAndUpdate(id, { billPayment: true, paymentDate: currentDate, paymentMethod: "Cash" }, { new: true }).populate("customer");
         const totalBill = result.bill?.map(item => item.repairCost)?.reduce((sum, cost) => sum + cost, 0);
         const mailOptions = {
-            from: process.env.MAIL_USER,
+            // from: process.env.MAIL_USER,
+            from: "DriveWell Garage <onboarding@resend.dev>",
             to: result.customer.email,
             subject: "Final Payment Successfully",
             html: `
