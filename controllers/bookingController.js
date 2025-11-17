@@ -5,6 +5,10 @@ const Vehicle = require("../models/vehicleModel");
 const Joi = require("joi");
 const { format } = require("date-fns");
 const transporter = require("../config/nodeMailer");
+const { Resend } = require("resend");
+
+const resend = new Resend(process.env.RESEND_KEY);
+
 
 
 exports.getBookingController = async (req, res) => {
@@ -227,7 +231,8 @@ exports.editBookingStatusController = async (req, res) => {
 
                     `
             };
-            await transporter.sendMail(mailOptions);
+            // await transporter.sendMail(mailOptions);
+            await resend.emails.send(mailOptions);
         }
         return res.status(200).json({ "Message": "Booking status updated successfully." });
 
@@ -327,7 +332,8 @@ exports.updateBillPaymentStatusController = async (req, res) => {
                             <b>DriveWell Garage Team</b></p>
                     `
         };
-        await transporter.sendMail(mailOptions);
+        // await transporter.sendMail(mailOptions);
+        await resend.emails.send(mailOptions);
         return res.status(200).json({ "Message": "Billing status updated successfully." });
 
     } catch (err) {

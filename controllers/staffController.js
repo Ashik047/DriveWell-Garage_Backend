@@ -4,6 +4,10 @@ const Joi = require("joi");
 const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const transporter = require("../config/nodeMailer");
+const { Resend } = require("resend");
+
+const resend = new Resend(process.env.RESEND_KEY);
+
 
 
 exports.getAllStaffsController = async (req, res) => {
@@ -65,7 +69,8 @@ exports.addStaffController = async (req, res) => {
             `
             };
             try {
-                await transporter.sendMail(mailOptions);
+                // await transporter.sendMail(mailOptions);
+                await resend.emails.send(mailOptions);
             } catch (err) {
                 return res.status(500).json({ "Message": "Failed to sent mail to the staff. New staff creating failed." })
             }

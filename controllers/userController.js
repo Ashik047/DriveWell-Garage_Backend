@@ -4,8 +4,12 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { cloudinary } = require("../middlewares/multerMiddleware");
-const transporter = require("../config/nodeMailer");
+// const transporter = require("../config/nodeMailer");
+const { Resend } = require("resend");
 const mongoose = require("mongoose");
+
+
+const resend = new Resend(process.env.RESEND_KEY);
 
 /* auth controllers */
 
@@ -66,7 +70,8 @@ module.exports.registerController = async (req, res) => {
                     <b>DriveWell Garage Team</b></p>
                 `
         };
-        await transporter.sendMail(mailOptions);
+        // await transporter.sendMail(mailOptions);
+        await resend.emails.send(mailOptions);
         return res.status(200).json({ "Message": "Account created successfully." });
 
     } catch (err) {
@@ -347,7 +352,8 @@ exports.forgotPasswordController = async (req, res) => {
             `
             };
             try {
-                await transporter.sendMail(mailOptions);
+                // await transporter.sendMail(mailOptions);
+                await resend.emails.send(mailOptions);
             } catch (err) {
                 return res.status(500).json({ "Message": "Failed to reset password. Try again after sometime." })
             }

@@ -3,6 +3,10 @@ const Booking = require("../models/bookingModel");
 const stripe = require("stripe")(process.env.STRIPEKEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 const { format } = require("date-fns");
+const { Resend } = require("resend");
+
+const resend = new Resend(process.env.RESEND_KEY);
+
 
 exports.webhookController = async (req, res) => {
     const sig = req.headers["stripe-signature"];
@@ -66,7 +70,8 @@ exports.webhookController = async (req, res) => {
                         <b>DriveWell Garage Team</b></p>
                     `
                 };
-                await transporter.sendMail(mailOptions);
+                // await transporter.sendMail(mailOptions);
+                await resend.emails.send(mailOptions);
             } else if (metadata.type === "final") {
                 const currentDate = new Date();
                 await Booking.findByIdAndUpdate(metadata.bookingId, { billPayment: true, paymentDate: currentDate, paymentMethod: "Stripe" });
@@ -102,7 +107,8 @@ exports.webhookController = async (req, res) => {
                             <b>DriveWell Garage Team</b></p>
                     `
                 };
-                await transporter.sendMail(mailOptions);
+                // await transporter.sendMail(mailOptions);
+                await resend.emails.send(mailOptions);
             }
             return res.status(200);
         } catch (err) {
