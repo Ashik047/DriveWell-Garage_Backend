@@ -1,5 +1,4 @@
 const User = require("../models/userModel");
-const passport = require("passport");
 const Joi = require("joi");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
